@@ -83,13 +83,13 @@ The log prints paths like `Uploaded to Dropbox: /invoices/4037P123257.pdf`. Wher
 | **App folder** | A folder inside the app's sandbox | **Apps → your-app-name → invoices** |
 | **Full Dropbox** | A folder at the root of your account | **invoices** (top level) or any path you configure |
 
-With an **App folder** app, paths are relative to `Dropbox/Apps/<app-name>/`, not your main Dropbox tree. So `/Podjetje/Podjetje 2026/Prejeti` does **not** upload to your real business folder — it creates that path **inside** the app sandbox.
+With an **App folder** app, paths are relative to `Dropbox/Apps/<app-name>/`, not your main Dropbox tree. So `/Company/2026/Received invoices` does **not** upload to your real business folder — it creates that path **inside** the app sandbox.
 
-To upload directly to a folder like `/Podjetje/Podjetje 2026/Prejeti` in your main Dropbox:
+To upload directly to a folder like `/Company/2026/Received invoices` in your main Dropbox:
 
 1. Create a **Full Dropbox** app (not App folder)
 2. Generate a new access token
-3. Set `DROPBOX_FOLDER=/Podjetje/Podjetje 2026/Prejeti` in `.env`
+3. Set `DROPBOX_FOLDER=/Company/2026/Received invoices` in `.env`
 4. Run `python sync_invoices.py --reset`
 
 ## Synology Task Scheduler
