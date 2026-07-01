@@ -28,9 +28,12 @@ All three URL fields must match **exactly** — including `localhost` (not `127.
 ### Dropbox app
 
 1. Create an app at [dropbox.com/developers/apps](https://www.dropbox.com/developers/apps)
-2. Choose **Scoped access** → **Full Dropbox** (or App folder if you prefer)
-3. Enable permission: `files.content.write`
-4. Generate an access token
+2. Choose **Scoped access** → **Full Dropbox** or **App folder**
+3. Enable permissions: `files.content.write` (and `files.metadata.read` if you use an older token workflow)
+4. **Generate a new access token** after saving permissions — tokens created before enabling scopes will not work
+5. Paste the token into `DROPBOX_ACCESS_TOKEN` in `.env`
+
+See [Dropbox folder location](#dropbox-folder-location) below — App folder vs Full Dropbox changes where files appear in the UI.
 
 ## Setup
 
@@ -46,6 +49,48 @@ python sync_invoices.py
 ```
 
 Run `setup_auth.py` on any machine with a browser (your laptop is fine). It saves the refresh token to `state.json`. Copy `state.json` to the NAS alongside the script.
+
+## Usage
+
+```bash
+# Normal run — download new invoices only
+python sync_invoices.py
+
+# Re-download all invoices (ignore previous sync history)
+python sync_invoices.py --reset
+```
+
+### `--reset` flag
+
+The script tracks which invoices it has already handled in `state.json` (`processed_invoices`). On each run it skips those IDs so reruns are safe and fast.
+
+Use `--reset` when you want to start over, for example:
+
+- You deleted local PDFs from `invoices/` and want them downloaded again
+- You changed Dropbox settings and want to re-upload everything
+- You are testing after fixing Dropbox or Tesla configuration
+
+`--reset` clears the processed-invoice list only. It does **not** remove your Tesla OAuth tokens — you do not need to run `setup_auth.py` again.
+
+## Dropbox folder location
+
+This is a common source of confusion.
+
+The log prints paths like `Uploaded to Dropbox: /invoices/4037P123257.pdf`. Where that file appears in the Dropbox UI depends on your **app type**:
+
+| App type | What `DROPBOX_FOLDER=/invoices` means | Where to look in Dropbox |
+|---|---|---|
+| **App folder** | A folder inside the app's sandbox | **Apps → your-app-name → invoices** |
+| **Full Dropbox** | A folder at the root of your account | **invoices** (top level) or any path you configure |
+
+With an **App folder** app, paths are relative to `Dropbox/Apps/<app-name>/`, not your main Dropbox tree. So `/Podjetje/Podjetje 2026/Prejeti` does **not** upload to your real business folder — it creates that path **inside** the app sandbox.
+
+To upload directly to a folder like `/Podjetje/Podjetje 2026/Prejeti` in your main Dropbox:
+
+1. Create a **Full Dropbox** app (not App folder)
+2. Generate a new access token
+3. Set `DROPBOX_FOLDER=/Podjetje/Podjetje 2026/Prejeti` in `.env`
+4. Run `python sync_invoices.py --reset`
 
 ## Synology Task Scheduler
 
@@ -69,8 +114,9 @@ A daily or hourly schedule is usually enough. Charging invoices typically appear
 | `TESLA_CLIENT_SECRET` | Tesla app client secret |
 | `TESLA_REGION` | `na` or `eu` (match your Tesla account region) |
 | `TESLA_VIN` | Optional — limit to one vehicle |
-| `DROPBOX_ACCESS_TOKEN` | Dropbox API token |
-| `DROPBOX_FOLDER` | Destination folder, e.g. `/Tesla/Invoices` |
+| `INVOICES_DIR` | Local folder for PDFs (default: `./invoices`) |
+| `DROPBOX_ACCESS_TOKEN` | Optional Dropbox API token (omit to save locally only) |
+| `DROPBOX_FOLDER` | Dropbox destination path (see [Dropbox folder location](#dropbox-folder-location)) |
 | `STATE_FILE` | Path to token/state JSON (default: `./state.json`) |
 | `LOG_FILE` | Optional log file path |
 
@@ -79,7 +125,7 @@ A daily or hourly schedule is usually enough. Charging invoices typically appear
 | File | Purpose |
 |---|---|
 | `setup_auth.py` | One-time OAuth login, saves refresh token |
-| `sync_invoices.py` | Main job for Task Scheduler |
+| `sync_invoices.py` | Main job for Task Scheduler (`--reset` to re-sync all invoices) |
 | `state.json` | OAuth tokens + processed invoice IDs (created at runtime, chmod 600) |
 
 ## Notes
